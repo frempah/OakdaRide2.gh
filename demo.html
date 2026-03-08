@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0"/>
+<title>OkadaRide – Driver Registration Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Syne:wght@700;800&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a2a0a;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:100vh;font-family:'Nunito',sans-serif;padding:20px}
+@keyframes slideUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes typing{from{width:0}to{width:100%}}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+@keyframes pulse{0%,100%{transform:scale(1);box-shadow:0 0 0 0 rgba(27,122,47,.4)}50%{transform:scale(1.05);box-shadow:0 0 0 10px rgba(27,122,47,0)}}
+@keyframes highlight{0%{background:rgba(255,179,0,.0)}50%{background:rgba(255,179,0,.3)}100%{background:rgba(255,179,0,.0)}}
+@keyframes checkmark{0%{transform:scale(0) rotate(-45deg);opacity:0}60%{transform:scale(1.2) rotate(5deg);opacity:1}100%{transform:scale(1) rotate(0deg);opacity:1}}
+@keyframes progress{from{width:0%}to{width:var(--target-width)}}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(-6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes ripple{0%{transform:scale(0);opacity:1}100%{transform:scale(4);opacity:0}}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+<script type="text/babel">
+const {useState,useEffect,useRef}=React;
+
+const C={
+  primary:"#1B7A2F",primaryLight:"#27AE45",primaryDark:"#0D4A1A",
+  red:"#CC0000",gold:"#FFB300",
+  bg:"#F2FAF3",text:"#0D2E14",textMid:"#3D6645",textLight:"#85A88C",
+  success:"#00C853",border:"rgba(27,122,47,.15)",
+  accentSoft:"rgba(27,122,47,.1)",
+};
+
+const TukTuk=({size=32,color="#fff"})=>(
+  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
+    <rect x="10" y="18" width="38" height="22" rx="5" fill={color} opacity="0.95"/>
+    <rect x="14" y="10" width="28" height="10" rx="4" fill={color} opacity="0.8"/>
+    <rect x="16" y="12" width="24" height="7" rx="2" fill="rgba(0,0,0,0.25)"/>
+    <rect x="36" y="22" width="9" height="14" rx="2" fill="rgba(0,0,0,0.2)"/>
+    <rect x="10" y="30" width="10" height="10" rx="2" fill={color} opacity="0.7"/>
+    <circle cx="13" cy="36" r="2.5" fill="#FFE082"/>
+    <circle cx="42" cy="42" r="7" fill="#1a1a1a" stroke={color} strokeWidth="2"/>
+    <circle cx="42" cy="42" r="3" fill="#555"/>
+    <circle cx="16" cy="42" r="5" fill="#1a1a1a" stroke={color} strokeWidth="2"/>
+    <circle cx="16" cy="42" r="2" fill="#555"/>
+    <circle cx="42" cy="42" r="5.5" fill="none" stroke="#FFB300" strokeWidth="1" strokeDasharray="3,4"/>
+    <circle cx="16" cy="42" r="3.5" fill="none" stroke="#FFB300" strokeWidth="1" strokeDasharray="2,3"/>
+  </svg>
+);
+
+// Typing animation component
+function TypedText({text,speed=40,onDone,color="#0D2E14"}){
+  const [displayed,setDisplayed]=useState("");
+  const [done,setDone]=useState(false);
+  useEffect(()=>{
+    setDisplayed("");setDone(false);
+    let i=0;
+    const id=setInterval(()=>{
+      i++;
+      setDisplayed(text.slice(0,i));
+      if(i>=text.length){clearInterval(id);setDone(true);if(onDone)onDone();}
+    },speed);
+    return()=>clearInterval(id);
+  },[text]);
+  return(
+    <span style={{color,fontWeight:700,fontSize:15}}>
+      {displayed}
+      {!done&&<span style={{animation:"blink .7s infinite",fontWeight:900,color:C.primary}}>|</span>}
+    </span>
+  );
+}
+
+// Animated field
+function DemoField({label,value,icon,active,filled,delay=0}){
+  return(
+    <div style={{marginBottom:12,animation:active?`slideUp .4s ease ${delay}s both`:"none"}}>
+      <p style={{fontWeight:700,fontSize:11,color:C.textMid,marginBottom:5,textTransform:"uppercase",letterSpacing:.5}}>{label}</p>
+      <div style={{
+        position:"relative",
+        border:`2px solid ${active?C.primary:filled?"rgba(0,200,83,.4)":C.border}`,
+        borderRadius:12,padding:"12px 12px 12px 40px",
+        background:active?"#fff":filled?"rgba(0,200,83,.04)":"#f8fdf9",
+        transition:"all .3s",
+        boxShadow:active?`0 0 0 3px rgba(27,122,47,.15)`:"none"
+      }}>
+        <span style={{position:"absolute",left:12,top:"50%",transform:"translateY(-50%)",fontSize:15}}>{icon}</span>
+        {active&&value?(
+          <TypedText text={value} speed={45}/>
+        ):(
+          <span style={{color:filled?C.text:C.textLight,fontWeight:filled?700:400,fontSize:15}}>
+            {filled?value:`Enter ${label.toLowerCase()}...`}
+          </span>
+        )}
+        {filled&&!active&&(
+          <span style={{position:"absolute",right:12,top:"50%",transform:"translateY(-50%)",color:C.success,fontSize:16,animation:"checkmark .4s ease"}}>✓</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// Step indicator
+function StepBar({current}){
+  return(
+    <div style={{display:"flex",alignItems:"center",gap:0,marginBottom:20}}>
+      {["Personal Info","Tricycle","Licence & Docs"].map((s,i)=>(
+        <React.Fragment key={s}>
+          <div style={{display:"flex",flexDirection:"column",alignItems:"center",flex:1}}>
+            <div style={{
+              width:32,height:32,borderRadius:"50%",
+              background:i<current?C.success:i===current?C.primary:"rgba(27,122,47,.15)",
+              display:"flex",alignItems:"center",justifyContent:"center",
+              fontSize:13,fontWeight:800,color:i<=current?"#fff":C.textLight,
+              transition:"all .5s",
+              boxShadow:i===current?`0 0 0 4px rgba(27,122,47,.2)`:"none",
+              animation:i===current?"pulse 2s infinite":"none"
+            }}>
+              {i<current?"✓":i+1}
+            </div>
+            <p style={{fontSize:9,fontWeight:700,color:i===current?C.primary:i<current?C.success:C.textLight,marginTop:5,textAlign:"center",lineHeight:1.2}}>{s}</p>
+          </div>
+          {i<2&&<div style={{height:3,flex:1.5,background:i<current?C.success:"rgba(27,122,47,.15)",borderRadius:2,marginBottom:18,transition:"background .5s"}}/>}
+        </React.Fragment>
+      ))}
+    </div>
+  );
+}
+
+// Callout bubble — like a video tutorial annotation
+function Callout({text,visible,position="bottom",color=C.primary}){
+  if(!visible)return null;
+  return(
+    <div style={{
+      position:"absolute",
+      ...(position==="bottom"?{bottom:-52,left:0,right:0}:{top:-52,left:0,right:0}),
+      background:color,color:"#fff",
+      borderRadius:12,padding:"8px 14px",
+      fontSize:13,fontWeight:700,textAlign:"center",
+      animation:"slideUp .3s ease",zIndex:10,
+      boxShadow:"0 4px 16px rgba(0,0,0,.2)"
+    }}>
+      {position==="bottom"&&<div style={{position:"absolute",top:-7,left:"50%",transform:"translateX(-50%)",width:14,height:14,background:color,clipPath:"polygon(50% 0%, 0% 100%, 100% 100%)"}}/>}
+      {text}
+    </div>
+  );
+}
+
+// Phone frame wrapper
+function PhoneFrame({children}){
+  return(
+    <div style={{
+      width:"100%",maxWidth:360,
+      background:"#1a1a2e",
+      borderRadius:40,padding:"14px 14px 24px",
+      boxShadow:"0 30px 80px rgba(0,0,0,.6),inset 0 1px 0 rgba(255,255,255,.1)",
+      border:"3px solid #333"
+    }}>
+      {/* Phone notch */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:10}}>
+        <div style={{width:100,height:8,background:"#333",borderRadius:10}}/>
+      </div>
+      <div style={{background:C.bg,borderRadius:28,overflow:"hidden",minHeight:580}}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+// ── MAIN DEMO ─────────────────────────────────────────────────────────────────
+const DEMO_SCENES=[
+  {id:"intro",title:"Driver Registration Demo",subtitle:"See how easy it is to join OkadaRide Ghana"},
+  {id:"step1",title:"Step 1 — Personal Info"},
+  {id:"step1-fill",title:"Filling Personal Info"},
+  {id:"step2",title:"Step 2 — Tricycle Details"},
+  {id:"step2-fill",title:"Filling Tricycle Details"},
+  {id:"step3",title:"Step 3 — Licence & Documents"},
+  {id:"step3-fill",title:"Completing Documents"},
+  {id:"submit",title:"Submitting to Firebase"},
+  {id:"done",title:"Application Complete!"},
+];
+
+function Demo(){
+  const [scene,setScene]=useState(0);
+  const [playing,setPlaying]=useState(false);
+  const [progress,setProgress]=useState(0);
+  const [fieldStep,setFieldStep]=useState(0);
+  const timerRef=useRef(null);
+
+  const SCENE_DURATION=[4000,3000,5000,3000,5000,3000,5000,3500,5000];
+
+  const startAutoPlay=()=>{
+    setPlaying(true);
+  };
+
+  useEffect(()=>{
+    if(!playing)return;
+    setProgress(0);
+    setFieldStep(0);
+    const dur=SCENE_DURATION[scene]||4000;
+    // Progress bar
+    const tick=50;
+    let elapsed=0;
+    const prog=setInterval(()=>{
+      elapsed+=tick;
+      setProgress(Math.min(100,(elapsed/dur)*100));
+    },tick);
+    // Field typing steps
+    const fTimers=[];
+    if(scene===2){
+      [0,1500,3000,4200].forEach((t,i)=>fTimers.push(setTimeout(()=>setFieldStep(i+1),t)));
+    }
+    if(scene===4){
+      [0,1500,3000,4200].forEach((t,i)=>fTimers.push(setTimeout(()=>setFieldStep(i+1),t)));
+    }
+    if(scene===6){
+      [0,1500,3000,4200].forEach((t,i)=>fTimers.push(setTimeout(()=>setFieldStep(i+1),t)));
+    }
+    timerRef.current=setTimeout(()=>{
+      clearInterval(prog);
+      if(scene<DEMO_SCENES.length-1){
+        setScene(s=>s+1);
+      } else {
+        setPlaying(false);
+        setScene(0);
+      }
+    },dur);
+    return()=>{
+      clearInterval(prog);
+      clearTimeout(timerRef.current);
+      fTimers.forEach(clearTimeout);
+    };
+  },[scene,playing]);
+
+  const goTo=s=>{
+    clearTimeout(timerRef.current);
+    setScene(s);
+    setFieldStep(0);
+    setProgress(0);
+  };
+
+  const renderScene=()=>{
+    switch(DEMO_SCENES[scene].id){
+
+      case "intro": return(
+        <div style={{padding:24,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",minHeight:580,textAlign:"center"}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,borderRadius:24,padding:24,marginBottom:20,width:"100%",position:"relative",overflow:"hidden"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <div style={{display:"flex",justifyContent:"center",marginBottom:12,marginTop:8,animation:"bounce 1.5s infinite"}}>
+              <TukTuk size={64} color="#fff"/>
+            </div>
+            <p style={{fontFamily:"'Syne',sans-serif",fontSize:22,fontWeight:800,color:"#fff"}}>OkadaRide Ghana</p>
+            <p style={{color:C.gold,fontSize:12,fontWeight:700,marginTop:4}}>DRIVER REGISTRATION GUIDE 🇬🇭</p>
+          </div>
+          <p style={{color:C.textMid,fontSize:14,lineHeight:1.7,marginBottom:20}}>
+            This demo shows you exactly<br/>how a driver signs up on OkadaRide.<br/><br/>
+            The process takes <strong style={{color:C.primary}}>3 simple steps</strong><br/>and about <strong style={{color:C.primary}}>5 minutes</strong> to complete.
+          </p>
+          <div style={{display:"flex",flexDirection:"column",gap:10,width:"100%"}}>
+            {["📋 Step 1 — Personal Information","🛺 Step 2 — Tricycle Details","🪪 Step 3 — Licence & Documents","🔥 Submit to Firebase Database"].map((s,i)=>(
+              <div key={i} style={{background:C.accentSoft,border:`1px solid ${C.border}`,borderRadius:12,padding:"10px 14px",display:"flex",alignItems:"center",gap:10,animation:`slideUp .4s ease ${i*.15}s both`}}>
+                <span style={{fontSize:16}}>{s.split(" ")[0]}</span>
+                <p style={{fontWeight:700,fontSize:13,color:C.text}}>{s.slice(3)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      case "step1": return(
+        <div style={{minHeight:580}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,padding:"32px 20px 20px",position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <StepBar current={0}/>
+          </div>
+          <div style={{padding:"20px 16px"}}>
+            <div style={{background:"#fff",borderRadius:18,padding:18,border:`1px solid ${C.border}`,boxShadow:"0 2px 12px rgba(27,122,47,.08)"}}>
+              <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",marginBottom:14}}>
+                <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:C.primary}}/>
+              </div>
+              <p style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:4}}>Step 1: Personal Information</p>
+              <p style={{color:C.textMid,fontSize:12,marginBottom:16,lineHeight:1.5}}>We need your basic details to verify who you are before you start riding.</p>
+              {[["👤","Full Name","As it appears on your Ghana Card"],["📞","Phone Number","Your active MTN or Vodafone number"],["🪪","Ghana Card Number","Your national ID number"],["🎂","Date of Birth","Used to confirm your age"],["🇬🇭","Your Region","Which of the 16 regions you operate in"]].map(([icon,label,hint])=>(
+                <div key={label} style={{marginBottom:10}}>
+                  <p style={{fontWeight:700,fontSize:11,color:C.textMid,marginBottom:4,textTransform:"uppercase"}}>{label}</p>
+                  <div style={{border:`1.5px solid ${C.border}`,borderRadius:10,padding:"11px 11px 11px 38px",background:"#f8fdf9",position:"relative",display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{position:"absolute",left:11,fontSize:14}}>{icon}</span>
+                    <span style={{color:C.textLight,fontSize:13}}>{hint}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "step1-fill": return(
+        <div style={{minHeight:580}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,padding:"32px 20px 20px",position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <StepBar current={0}/>
+          </div>
+          <div style={{padding:"20px 16px"}}>
+            <div style={{background:"#fff",borderRadius:18,padding:18,border:`1px solid ${C.border}`,boxShadow:"0 2px 12px rgba(27,122,47,.08)"}}>
+              <p style={{fontWeight:800,fontSize:14,color:C.text,marginBottom:14}}>✍️ Driver is filling in their details...</p>
+              <DemoField label="Full Name" value="Kwame Asante" icon="👤" active={fieldStep===1} filled={fieldStep>1}/>
+              <DemoField label="Phone Number" value="055-123-4567" icon="📞" active={fieldStep===2} filled={fieldStep>2}/>
+              <DemoField label="Ghana Card" value="GHA-987654321-1" icon="🪪" active={fieldStep===3} filled={fieldStep>3}/>
+              <DemoField label="Region" value="Ashanti Region" icon="🇬🇭" active={fieldStep===4} filled={fieldStep>4}/>
+              {fieldStep>=4&&(
+                <div style={{marginTop:16,animation:"slideUp .4s ease"}}>
+                  <div style={{background:`linear-gradient(135deg,${C.primaryLight},${C.primaryDark})`,borderRadius:13,padding:"14px",textAlign:"center",cursor:"pointer",boxShadow:`0 4px 16px rgba(27,122,47,.3)`}}>
+                    <p style={{color:"#fff",fontWeight:800,fontSize:15}}>Continue → Step 2</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "step2": return(
+        <div style={{minHeight:580}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,padding:"32px 20px 20px",position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <StepBar current={1}/>
+          </div>
+          <div style={{padding:"20px 16px"}}>
+            <div style={{background:"#fff",borderRadius:18,padding:18,border:`1px solid ${C.border}`,boxShadow:"0 2px 12px rgba(27,122,47,.08)"}}>
+              <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",marginBottom:14}}>
+                <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:C.primary}}/>
+              </div>
+              <p style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:4}}>Step 2: Tricycle Details</p>
+              <p style={{color:C.textMid,fontSize:12,marginBottom:16,lineHeight:1.5}}>Tell passengers what to look for when your tricycle arrives.</p>
+              <div style={{background:"rgba(27,122,47,.06)",border:`1px solid rgba(27,122,47,.15)`,borderRadius:14,padding:14,marginBottom:12,display:"flex",gap:12,alignItems:"center"}}>
+                <TukTuk size={44} color={C.primary}/>
+                <div>
+                  <p style={{fontWeight:800,fontSize:13,color:C.text}}>Your Tricycle Info</p>
+                  <p style={{fontSize:12,color:C.textMid,marginTop:3,lineHeight:1.4}}>Passengers use this to identify your specific tricycle when you arrive.</p>
+                </div>
+              </div>
+              {[["🛺","Plate Number","e.g. M-24-BR-1535"],["🎨","Tricycle Colour","e.g. Green & Black"],["📅","Year Made","e.g. 2022"],["📍","Operating Area","e.g. Kumasi Central"]].map(([icon,label,hint])=>(
+                <div key={label} style={{marginBottom:10}}>
+                  <p style={{fontWeight:700,fontSize:11,color:C.textMid,marginBottom:4,textTransform:"uppercase"}}>{label}</p>
+                  <div style={{border:`1.5px solid ${C.border}`,borderRadius:10,padding:"11px 11px 11px 38px",background:"#f8fdf9",position:"relative"}}>
+                    <span style={{position:"absolute",left:11,fontSize:14}}>{icon}</span>
+                    <span style={{color:C.textLight,fontSize:13}}>{hint}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "step2-fill": return(
+        <div style={{minHeight:580}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,padding:"32px 20px 20px",position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <StepBar current={1}/>
+          </div>
+          <div style={{padding:"20px 16px"}}>
+            <div style={{background:"#fff",borderRadius:18,padding:18,border:`1px solid ${C.border}`,boxShadow:"0 2px 12px rgba(27,122,47,.08)"}}>
+              <p style={{fontWeight:800,fontSize:14,color:C.text,marginBottom:14}}>🛺 Adding tricycle details...</p>
+              <DemoField label="Plate Number" value="AS-4521-23" icon="🛺" active={fieldStep===1} filled={fieldStep>1}/>
+              <DemoField label="Tricycle Colour" value="Green & Black" icon="🎨" active={fieldStep===2} filled={fieldStep>2}/>
+              <DemoField label="Year Made" value="2023" icon="📅" active={fieldStep===3} filled={fieldStep>3}/>
+              <DemoField label="Operating Area" value="Kumasi Central" icon="📍" active={fieldStep===4} filled={fieldStep>4}/>
+              {fieldStep>=4&&(
+                <div style={{marginTop:16,animation:"slideUp .4s ease"}}>
+                  <div style={{background:`linear-gradient(135deg,${C.primaryLight},${C.primaryDark})`,borderRadius:13,padding:"14px",textAlign:"center",boxShadow:`0 4px 16px rgba(27,122,47,.3)`}}>
+                    <p style={{color:"#fff",fontWeight:800,fontSize:15}}>Continue → Step 3</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "step3": return(
+        <div style={{minHeight:580,overflowY:"auto"}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,padding:"32px 20px 20px",position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <StepBar current={2}/>
+          </div>
+          <div style={{padding:"20px 16px"}}>
+            <div style={{background:"#fff",borderRadius:18,padding:18,border:`1px solid ${C.border}`,boxShadow:"0 2px 12px rgba(27,122,47,.08)"}}>
+              <div style={{display:"flex",height:5,borderRadius:3,overflow:"hidden",marginBottom:14}}>
+                <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:C.primary}}/>
+              </div>
+              <p style={{fontWeight:800,fontSize:15,color:C.text,marginBottom:4}}>Step 3: Licence & Safety</p>
+              <p style={{color:C.textMid,fontSize:12,marginBottom:14,lineHeight:1.5}}>This is the most important step — it protects your passengers.</p>
+              {[
+                {icon:"🪪",title:"Driving Licence",desc:"Your DVLA licence number and expiry date",color:"rgba(27,122,47,.08)"},
+                {icon:"🚔",title:"Police Clearance",desc:"Reference from Ghana Police Service — confirms no criminal record",color:"rgba(0,176,255,.08)"},
+                {icon:"🆘",title:"Emergency Contact",desc:"Someone we can call if you're ever in trouble on a ride",color:"rgba(204,0,0,.06)"},
+                {icon:"✅",title:"Two Agreements",desc:"You agree to OkadaRide's code of conduct and background check",color:"rgba(255,179,0,.08)"},
+              ].map(({icon,title,desc,color})=>(
+                <div key={title} style={{background:color,border:`1px solid ${C.border}`,borderRadius:12,padding:"12px 14px",marginBottom:10,display:"flex",gap:12,alignItems:"flex-start"}}>
+                  <span style={{fontSize:22,flexShrink:0}}>{icon}</span>
+                  <div>
+                    <p style={{fontWeight:800,fontSize:13,color:C.text}}>{title}</p>
+                    <p style={{fontSize:12,color:C.textMid,marginTop:3,lineHeight:1.4}}>{desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "step3-fill": return(
+        <div style={{minHeight:580}}>
+          <div style={{background:`linear-gradient(135deg,${C.primaryDark},${C.primary})`,padding:"32px 20px 20px",position:"relative"}}>
+            <div style={{position:"absolute",top:0,left:0,right:0,display:"flex",height:5}}>
+              <div style={{flex:1,background:C.red}}/><div style={{flex:1,background:C.gold}}/><div style={{flex:1,background:"#006400"}}/>
+            </div>
+            <StepBar current={2}/>
+          </div>
+          <div style={{padding:"20px 16px"}}>
+            <div style={{background:"#fff",borderRadius:18,padding:18,border:`1px solid ${C.border}`,boxShadow:"0 2px 12px rgba(27,122,47,.08)"}}>
+              <p style={{fontWeight:800,fontSize:14,color:C.text,marginBottom:14}}>🪪 Adding licence & safety info...</p>
+              <DemoField label="Licence Number" value="DL-87654321" icon="🔢" active={fieldStep===1} filled={fieldStep>1}/>
+              <DemoField label="Licence Expiry" value="2026-08-15" icon="📅" active={fieldStep===2} filled={fieldStep>2}/>
+              <DemoField label="Emergency Contact" value="Ama Asante — 024-987-6543" icon="🆘" active={fieldStep===3} filled={fieldStep>3}/>
+              {fieldStep>=3&&(
+                <div style={{animation:"slideUp .4s ease"}}>
+                  <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:10,background:"rgba(27,122,47,.06)",borderRadius:10,padding:"10px 12px"}}>
+                    <div style={{width:20,height:20,borderRadius:4,background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                      <span style={{color:"#fff",fontSize:12}}>✓</span>
+                    </div>
+                    <p style={{fontSize:12,color:C.textMid,fontWeight:600,lineHeight:1.4}}>I agree to OkadaRide's Terms of Service and Rider Code of Conduct</p>
+                  </div>
+                  <div style={{display:"flex",gap:10,alignItems:"flex-start",marginBottom:14,background:"rgba(27,122,47,.06)",borderRadius:10,padding:"10px 12px"}}>
+                    <div style={{width:20,height:20,borderRadius:4,background:C.primary,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,marginTop:1}}>
+                      <span style={{color:"#fff",fontSize:12}}>✓</span>
+                    </div>
+                    <p style={{fontSize:12,color:C.textMid,fontWeight:600,lineHeight:1.4}}>I consent to a background check and confirm all info is true</p>
+                  </div>
+                  <div style={{background:`linear-gradient(135deg,${C.primaryLight},${C.primaryDark})`,borderRadius:13,padding:"14px",textAlign:"center",boxShadow:`0 4px 16px rgba(27,122,47,.3)`}}>
+                    <p style={{color:"#fff",fontWeight:800,fontSize:15}}>Submit Application 🚀</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "submit": return(
+        <div style={{minHeight:580,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24}}>
+          <div style={{textAlign:"center"}}>
+            <div style={{position:"relative",width:120,height:120,margin:"0 auto 24px",display:"flex",alignItems:"center",justifyContent:"center"}}>
+              <div style={{position:"absolute",inset:0,borderRadius:"50%",background:`rgba(27,122,47,.1)`,animation:"pulse 1.2s ease infinite"}}/>
+              <div style={{position:"absolute",inset:15,borderRadius:"50%",background:`rgba(27,122,47,.15)`,animation:"pulse 1.2s ease infinite .3s"}}/>
+              <div style={{position:"absolute",inset:28,borderRadius:"50%",background:`linear-gradient(135deg,${C.primaryLight},${C.primaryDark})`,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                <div style={{width:24,height:24,border:"3px solid rgba(255,255,255,.3)",borderTop:"3px solid #fff",borderRadius:"50%",animation:"spin .8s linear infinite"}}/>
+              </div>
+            </div>
+            <p style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:C.text,marginBottom:8}}>Saving to Firebase...</p>
+            <p style={{color:C.textMid,fontSize:14,marginBottom:24}}>Securely uploading your application</p>
+            <div style={{background:"#fff",borderRadius:16,padding:16,border:`1px solid ${C.border}`,textAlign:"left",width:"100%"}}>
+              <p style={{fontWeight:800,fontSize:13,color:C.text,marginBottom:12}}>📤 Sending to database:</p>
+              {["✅ Full Name — Kwame Asante","✅ Phone — 055-123-4567","✅ Ghana Card — GHA-987654321-1","✅ Region — Ashanti","✅ Plate — AS-4521-23","✅ Licence — DL-87654321","✅ Emergency Contact saved","⏳ Saving to Firestore..."].map((item,i)=>(
+                <p key={i} style={{fontSize:12,color:item.includes("⏳")?C.primary:C.textMid,fontWeight:item.includes("⏳")?800:600,marginBottom:6,animation:`fadeIn .3s ease ${i*.2}s both`}}>{item}</p>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+      case "done": return(
+        <div style={{minHeight:580,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:24,textAlign:"center"}}>
+          <div style={{fontSize:72,marginBottom:16,animation:"checkmark .6s ease"}}>🎉</div>
+          <p style={{fontFamily:"'Syne',sans-serif",fontSize:24,fontWeight:800,color:C.text,marginBottom:8}}>Application Submitted!</p>
+          <p style={{color:C.textMid,fontSize:14,lineHeight:1.7,marginBottom:20}}>
+            <strong>Kwame Asante</strong> from <strong>Ashanti Region</strong><br/>
+            has been saved to the OkadaRide database.<br/>
+            We'll call <strong>055-123-4567</strong> within 24–48 hrs.
+          </p>
+          <div style={{background:"rgba(0,200,83,.08)",border:`1px solid rgba(0,200,83,.3)`,borderRadius:16,padding:"14px 18px",marginBottom:16,width:"100%",display:"flex",gap:12,alignItems:"center"}}>
+            <span style={{fontSize:28}}>🔥</span>
+            <div style={{textAlign:"left"}}>
+              <p style={{fontWeight:800,color:C.text,fontSize:14}}>Saved in Firebase!</p>
+              <p style={{color:C.textMid,fontSize:12,marginTop:2}}>Visible in your Firestore → driver_applications collection</p>
+            </div>
+          </div>
+          <div style={{background:"#fff",border:`1px solid ${C.border}`,borderRadius:16,padding:"14px 18px",width:"100%",textAlign:"left"}}>
+            <p style={{fontWeight:800,color:C.text,marginBottom:10,fontSize:13}}>Next steps for the driver:</p>
+            {["OkadaRide team reviews the application","Background check is run","Driver gets a call for confirmation","Account activated — driver starts earning! 💰"].map((s,i)=>(
+              <div key={i} style={{display:"flex",gap:10,marginBottom:8,alignItems:"flex-start"}}>
+                <span style={{color:C.primary,fontWeight:800,minWidth:20,fontSize:13}}>{i+1}.</span>
+                <span style={{color:C.textMid,fontSize:13}}>{s}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      default: return null;
+    }
+  };
+
+  return(
+    <div style={{display:"flex",flexDirection:"column",alignItems:"center",gap:20,width:"100%",maxWidth:400}}>
+      {/* Title */}
+      <div style={{textAlign:"center"}}>
+        <p style={{fontFamily:"'Syne',sans-serif",fontSize:20,fontWeight:800,color:"#fff",marginBottom:4}}>OkadaRide 🇬🇭</p>
+        <p style={{color:"rgba(255,255,255,.5)",fontSize:13}}>Driver Registration — Step by Step Demo</p>
+      </div>
+
+      {/* Phone */}
+      <PhoneFrame>
+        {renderScene()}
+      </PhoneFrame>
+
+      {/* Progress bar */}
+      <div style={{width:"100%",height:4,background:"rgba(255,255,255,.15)",borderRadius:4,overflow:"hidden"}}>
+        <div style={{height:"100%",background:`linear-gradient(90deg,${C.gold},${C.primaryLight})`,borderRadius:4,width:`${progress}%`,transition:"width .05s linear"}}/>
+      </div>
+
+      {/* Scene label */}
+      <div style={{textAlign:"center"}}>
+        <p style={{color:C.gold,fontWeight:800,fontSize:14}}>{DEMO_SCENES[scene].title}</p>
+        <p style={{color:"rgba(255,255,255,.4)",fontSize:12,marginTop:3}}>Scene {scene+1} of {DEMO_SCENES.length}</p>
+      </div>
+
+      {/* Controls */}
+      <div style={{display:"flex",gap:12,width:"100%"}}>
+        <button onClick={()=>goTo(Math.max(0,scene-1))} style={{flex:1,padding:"12px",borderRadius:14,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>⏮ Prev</button>
+        <button onClick={()=>{playing?setPlaying(false):startAutoPlay();}} style={{flex:2,padding:"12px",borderRadius:14,background:`linear-gradient(135deg,${C.primaryLight},${C.primaryDark})`,border:"none",color:"#fff",fontWeight:800,fontSize:15,cursor:"pointer",boxShadow:`0 4px 16px rgba(27,122,47,.4)`}}>
+          {playing?"⏸ Pause":"▶ Play Demo"}
+        </button>
+        <button onClick={()=>goTo(Math.min(DEMO_SCENES.length-1,scene+1))} style={{flex:1,padding:"12px",borderRadius:14,background:"rgba(255,255,255,.1)",border:"1px solid rgba(255,255,255,.2)",color:"#fff",fontWeight:700,fontSize:14,cursor:"pointer"}}>Next ⏭</button>
+      </div>
+
+      {/* Scene dots */}
+      <div style={{display:"flex",gap:8,justifyContent:"center"}}>
+        {DEMO_SCENES.map((_,i)=>(
+          <button key={i} onClick={()=>goTo(i)} style={{width:i===scene?24:8,height:8,borderRadius:4,background:i===scene?C.gold:i<scene?"rgba(255,255,255,.4)":"rgba(255,255,255,.2)",border:"none",cursor:"pointer",transition:"all .3s",padding:0}}/>
+        ))}
+      </div>
+
+      <p style={{color:"rgba(255,255,255,.3)",fontSize:11,textAlign:"center"}}>Tap Play to auto-play · Use Prev/Next to browse manually</p>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<Demo/>);
+</script>
+</body>
+</html>
