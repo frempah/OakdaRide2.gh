@@ -115,10 +115,16 @@ window.setDriverStatus = async (driverId, online) => {
 };
 
 // WhatsApp passenger
-window.whatsappPassenger = (phone, driverName, pickup) => {
+window.whatsappPassenger = (phone, driverName, plate, pickup) => {
   const clean = phone.replace(/[^0-9]/g, "");
-  const gh = clean.startsWith("0") ? "233"+clean.slice(1) : clean;
-  const msg = `Hello! This is ${driverName} from OkadaRide 🛺. I have accepted your ride request from *${pickup}*. I am on my way! Please be ready. 🇬🇭`;
+  const gh = clean.startsWith("0") ? "233"+clean.slice(1) : clean.startsWith("233") ? clean : "233"+clean;
+  const msg = `✅ *OkadaRide — Your Ride is Confirmed!*\n\n`+
+    `Driver *${driverName}* has accepted your booking!\n\n`+
+    `🛺 Plate Number: *${plate}*\n`+
+    `📍 Picking you up from: ${pickup}\n`+
+    `⏱️ I am on my way now!\n\n`+
+    `Please be ready at your pickup point.\n`+
+    `_OkadaRide Ghana 🇬🇭 — Safe travels!_`;
   window.open(`https://wa.me/${gh}?text=${encodeURIComponent(msg)}`, "_blank");
 };
 
@@ -482,7 +488,7 @@ function DriverDashboard({ driver, onLogout }) {
     const res = await window.acceptRide?.(booking.id, driver.fullName);
     if (res?.success) {
       showToast("✅ Ride accepted! Passenger notified.");
-      window.whatsappPassenger?.(booking.passengerPhone, driver.fullName, booking.pickup);
+      window.whatsappPassenger?.(booking.passengerPhone, driver.fullName, driver.plate, booking.pickup);
     } else showToast("Failed to accept. Try again.", "error");
     setUpdating(null);
   };
